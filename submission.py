@@ -121,20 +121,27 @@ class AgentMinimax(Agent):
 def rb_minmax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, turn):
     if time.time() >= finish_time:
         raise Exception("Time limit reached!")
-    if env.done():
-        r_curr = env.get_robot(agent_id)
-        r_other = env.get_robot(1-agent_id)
-        return current_action, r_curr.credit - r_other.credit
-    if depth == 0:
+    #if env.done():
+    #    r_curr = env.get_robot(agent_id)
+    #    r_other = env.get_robot(1-agent_id)
+    #    return current_action, r_curr.credit - r_other.credit
+    if depth == 0 or env.done():
         if turn == agent_id:
             return current_action, smart_heuristic(env, agent_id)
         else:
-            return current_action, smart_heuristic(env, turn)
+            return current_action, smart_heuristic(env, agent_id)
     operators = env.get_legal_operators(turn)
     children = [env.clone() for _ in operators]
     action = operators[0]
     if turn == agent_id:
         max_val = float('-inf')
+       # r_curr = env.get_robot(agent_id)
+      #  r_other = env.get_robot(1-agent_id)
+     #   if r_curr.credit > r_other.credit and r_other.battery == 0:
+        #    if "charge" in operators:
+         #       charge_index = children.index("charge")
+          #      children.pop(charge_index)
+           #     operators.pop(charge_index)
         for child, op in zip(children, operators):
             child.apply_operator(turn, op)
         while children:
