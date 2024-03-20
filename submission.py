@@ -96,7 +96,6 @@ def smart_heuristic(env: WarehouseEnv, robot_id: int):
 
         return 1000 * (robot.credit - other_robot.credit + 1) + (1 / (to_package_2 + 1))
 
-
 class AgentGreedyImproved(AgentGreedy):
     def heuristic(self, env: WarehouseEnv, robot_id: int):
         return smart_heuristic(env, robot_id)
@@ -169,7 +168,7 @@ def rb_minmax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, t
 class AgentAlphaBeta(Agent):
     # TODO: section c : 1
     def run_step(self, env: WarehouseEnv, agent_id, time_limit):
-        raise NotImplementedError()
+        raise Exception("Implementation Error!")
 
 
 class AgentExpectimax(Agent):
@@ -191,15 +190,12 @@ class AgentExpectimax(Agent):
 def expectimax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, turn):
     if time.time() >= finish_time:
         raise Exception("Time limit reached!")
-    if env.done():
-        r_curr = env.get_robot(agent_id)
-        r_other = env.get_robot(1-agent_id)
-        return current_action, r_curr.credit - r_other.credit
-    if depth == 0:
+
+    if depth == 0 or env.done():
         if turn == agent_id:
             return current_action, smart_heuristic(env, agent_id)
         else:
-            return current_action, -smart_heuristic(env, turn)
+            return current_action, smart_heuristic(env, agent_id)
     operators = env.get_legal_operators(turn)
     children = [env.clone() for _ in operators]
     action = operators[0]
@@ -207,10 +203,18 @@ def expectimax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, 
         max_val = float('-inf')
         for child, op in zip(children, operators):
             child.apply_operator(turn, op)
-            c_val = rb_minmax(child, agent_id, finish_time, op, depth - 1, 1 - turn)[1]
+        while children:
+            children_heuristics = [smart_heuristic(c, agent_id) for c in children]
+            max_heuristic = max(children_heuristics)
+            index_selected = children_heuristics.index(max_heuristic)
+            c_val = \
+            rb_minmax(children[index_selected], agent_id, finish_time, operators[index_selected], depth - 1, 1 - turn)[
+                1]
             if c_val > max_val:
                 max_val = c_val
-                action = op
+                action = operators[index_selected]
+            children.remove(children[index_selected])
+            operators.remove(operators[index_selected])
         return action, max_val
     else:
         count = 0
