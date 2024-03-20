@@ -4,13 +4,97 @@ from Agent import Agent, AgentGreedy
 from WarehouseEnv import WarehouseEnv, manhattan_distance
 import random
 
-R1 = 0
-R2 = 1
+R0 = 0
+R1 = 1
 
 
 # TODO: section a : 3
 def smart_heuristic(env: WarehouseEnv, robot_id: int):
-    pass
+    robot = env.get_robot(robot_id)
+    other_robot = env.get_robot((robot_id + 1) % 2)
+    charge1 = env.charge_stations[0].position
+    charge2 = env.charge_stations[1].position
+    # if robot pick package
+    #   if robot.package != None:
+    #     if manhattan_distance(robot.position, robot.package.destination) == 0:
+    #         return float('inf')
+    #  if (manhattan_distance(robot.position, robot.package.destination) + min(
+    #          manhattan_distance(robot.package.destination, charge1),
+    #         manhattan_distance(robot.package.destination, charge2))) / (robot.battery + 1) < 1:
+    # if(manhattan_distance(robot.position,other_robot.position)<=2):
+    #    col_diff = robot.position[0] - robot.package.destination[0]
+    #     row_diff = robot.position[1] - robot.package.destination[1]
+    # if (row_diff >= 0):
+    #  return (1 / (manhattan_distance(robot.position, (robot.package.destination[0], 4)) + 1)) + 10 * (
+    #        robot.battery - 1) * (robot.credit + 1)
+    # return (1 / manhattan_distance(robot.position, robot.package.destination)) + 10 * (robot.battery - 1) * (
+    #         robot.credit + 1)
+
+    # if robot didnt pick package
+    way1 = manhattan_distance(robot.position, env.packages[0].position) + manhattan_distance(env.packages[0].position,
+                                                                                             env.packages[
+                                                                                                 0].destination) + min(
+        manhattan_distance(env.packages[0].destination, env.charge_stations[0].position),
+        manhattan_distance(env.packages[0].destination, env.charge_stations[1].position))
+    # what if one of the packets picked by robot
+    way2 = manhattan_distance(robot.position, env.packages[1].position) + manhattan_distance(env.packages[1].position,
+                                                                                             env.packages[
+                                                                                                 1].destination) + min(
+        manhattan_distance(env.packages[0].destination, env.charge_stations[0].position),
+        manhattan_distance(env.packages[0].destination, env.charge_stations[1].position))
+    # what if one of the packets picked by robot
+    route1 = manhattan_distance(robot.position, env.packages[0].position) + manhattan_distance(env.packages[0].position,
+                                                                                               env.packages[
+                                                                                                   0].destination)
+    route2 = manhattan_distance(robot.position, env.packages[1].position) + manhattan_distance(env.packages[1].position,
+                                                                                               env.packages[
+                                                                                                   1].destination)
+    to_package_1 = manhattan_distance(robot.position, env.packages[0].position)
+    to_package_2 = manhattan_distance(robot.position, env.packages[1].position)
+    to_charge_1 = manhattan_distance(robot.position, env.charge_stations[0].position)
+    to_charge_2 = manhattan_distance(robot.position, env.charge_stations[1].position)
+    alpha = robot.battery - max(way1, way2)
+    #   if(manhattan_distance(robot.position,other_robot.position)<=1):
+    #      return -((alpha+1)*10+(1/(alpha+1))*10)+10*(robot.battery-1)*(robot.credit+1)
+    ###dengarous devisions by zero
+    expected_gain_1 = 2 * manhattan_distance(env.packages[0].position, env.packages[0].destination)
+    expected_gain_2 = 2 * manhattan_distance(env.packages[1].position, env.packages[1].destination)
+    y = (robot.credit - other_robot.credit) + (robot.battery - other_robot.battery) + alpha
+    if y == 0:
+        w = 1
+    else:
+        w = 1 / y
+    if way1 == 0:
+        way1 = 1
+    if way2 == 0:
+        way2 = 1
+    if robot.package is not None:
+        expected_gain = 2 * manhattan_distance(robot.package.position, robot.package.destination)
+        if manhattan_distance(robot.position, robot.package.destination) + min(
+                manhattan_distance(robot.package.destination, charge1),
+                manhattan_distance(robot.package.destination, charge2)) > robot.battery - 3 and robot.credit > 0:
+            return 1000 * (robot.battery + robot.credit - other_robot.credit + 1) + (
+                    1 / (min(to_charge_1, to_charge_2) + 1)) + other_robot.battery * (robot.battery + 1) * (
+                               expected_gain + 1) / ((
+                (manhattan_distance(robot.position, robot.package.destination) + 1)))
+        else:
+            return 1000 * (robot.credit - other_robot.credit + 1) + 1 / (
+                (manhattan_distance(robot.position, robot.package.destination) + 1)) + (robot.battery + 1) * (
+                       expected_gain) / ((
+                (manhattan_distance(robot.position, robot.package.destination) + 1)))
+
+    if (expected_gain_1 - way1) > (expected_gain_2 - way2) and robot.battery > way1:
+        z = expected_gain_1
+        #   if z == 0:
+        #      z = 1
+
+        return 1000 * (robot.credit - other_robot.credit + 1) + (1 / (to_package_1 + 1))
+    else:
+        z = expected_gain_2
+        #   if z == 0:
+        #      z = 1
+
+        return 1000 * (robot.credit - other_robot.credit + 1) + (1 / (to_package_2 + 1))
 
 
 class AgentGreedyImproved(AgentGreedy):
@@ -21,41 +105,57 @@ class AgentGreedyImproved(AgentGreedy):
 class AgentMinimax(Agent):
     # TODO: section b : 1
     def run_step(self, env: WarehouseEnv, agent_id, time_limit):
-        finish = time.time() + time_limit - 0.1
+        finish = time.time() + time_limit*0.95
         action = None
         depth = 0
-        turn = 0
         try:
             while True:
                 if time.time() >= finish:
                     raise Exception("Time limit reached!")
-                action = self.rb_minmax(WarehouseEnv, agent_id, finish, None, depth, 0)
+                action = rb_minmax(env, agent_id, finish, None, depth, agent_id)[0]
+                depth += 1
         except:
             return action
 
 
-def rb_minmax(env: WarehouseEnv, agent_id, finish, current_action, depth, turn):
-    if time.time() >= finish:
+def rb_minmax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, turn):
+    if time.time() >= finish_time:
         raise Exception("Time limit reached!")
-    if depth == 0 or WarehouseEnv.done():
-        return current_action, smart_heuristic(agent_id)
-    operators = WarehouseEnv.get_legal_operators(turn)
+    if env.done():
+        r_curr = env.get_robot(agent_id)
+        r_other = env.get_robot(1-agent_id)
+        return current_action, r_curr.credit - r_other.credit
+    if depth == 0:
+        if turn == agent_id:
+            return current_action, smart_heuristic(env, agent_id)
+        else:
+            return current_action, smart_heuristic(env, turn)
+    operators = env.get_legal_operators(turn)
+    children = [env.clone() for _ in operators]
     action = operators[0]
-    if turn == R1:
+    if turn == agent_id:
         max_val = float('-inf')
-        for move in operators:
-            c_val = rb_minmax(WarehouseEnv, agent_id, finish, move, depth - 1, R2)[1]
+        for child, op in zip(children, operators):
+            child.apply_operator(turn, op)
+        while children:
+            children_heuristics = [smart_heuristic(c, agent_id) for c in children]
+            max_heuristic = max(children_heuristics)
+            index_selected = children_heuristics.index(max_heuristic)
+            c_val = rb_minmax(children[index_selected], agent_id, finish_time, operators[index_selected], depth - 1, 1 - turn)[1]
             if c_val > max_val:
                 max_val = c_val
-                action = move
+                action = operators[index_selected]
+            children.remove(children[index_selected])
+            operators.remove(operators[index_selected])
         return action, max_val
-    else:  # turn == R2
+    else:  # turn == R1
         min_val = float('inf')
-        for move in operators:
-            c_val = rb_minmax(WarehouseEnv, agent_id, finish, move, depth - 1, R1)[1]
+        for child, op in zip(children, operators):
+            child.apply_operator(turn, op)
+            c_val = rb_minmax(child, agent_id, finish_time, op, depth - 1, 1 - turn)[1]
             if c_val < min_val:
                 min_val = c_val
-                action = move
+                action = op
         return action, min_val
 
 
@@ -68,7 +168,61 @@ class AgentAlphaBeta(Agent):
 class AgentExpectimax(Agent):
     # TODO: section d : 1
     def run_step(self, env: WarehouseEnv, agent_id, time_limit):
-        raise NotImplementedError()
+        finish = time.time() + time_limit*0.95
+        action = None
+        depth = 0
+        try:
+            while True:
+                if time.time() >= finish:
+                    raise Exception("Time limit reached!")
+                action = expectimax(env, agent_id, finish, None, depth, agent_id)[0]
+                depth += 1
+        except:
+            return action
+
+
+def expectimax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, turn):
+    if time.time() >= finish_time:
+        raise Exception("Time limit reached!")
+    if env.done():
+        r_curr = env.get_robot(agent_id)
+        r_other = env.get_robot(1-agent_id)
+        return current_action, r_curr.credit - r_other.credit
+    if depth == 0:
+        if turn == agent_id:
+            return current_action, smart_heuristic(env, agent_id)
+        else:
+            return current_action, -smart_heuristic(env, turn)
+    operators = env.get_legal_operators(turn)
+    children = [env.clone() for _ in operators]
+    action = operators[0]
+    if turn == agent_id:
+        max_val = float('-inf')
+        for child, op in zip(children, operators):
+            child.apply_operator(turn, op)
+            c_val = rb_minmax(child, agent_id, finish_time, op, depth - 1, 1 - turn)[1]
+            if c_val > max_val:
+                max_val = c_val
+                action = op
+        return action, max_val
+    else:
+        count = 0
+        if 'move east' in operators:
+            count = count + 1
+        if 'pick up' in operators:
+            count = count + 1
+
+        p = 1 / (len(children)+count)
+        exp = 0
+        min_val = float('inf')
+        for child, op in zip(children, operators):
+            child.apply_operator(turn, op)
+            c_val = rb_minmax(env, agent_id, finish_time, op, depth - 1, 1 - turn)[1]
+            if op == 'move east' or op == 'pick up':
+                exp += 2 * p * c_val
+            else:
+                exp += p * c_val
+        return action, exp
 
 
 # here you can check specific paths to get to know the environment
