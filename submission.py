@@ -207,8 +207,7 @@ def expectimax(env: WarehouseEnv, agent_id, finish_time, current_action, depth, 
             children_heuristics = [smart_heuristic(c, agent_id) for c in children]
             max_heuristic = max(children_heuristics)
             index_selected = children_heuristics.index(max_heuristic)
-            c_val = \
-            rb_minmax(children[index_selected], agent_id, finish_time, operators[index_selected], depth - 1, 1 - turn)[
+            c_val = rb_minmax(children[index_selected], agent_id, finish_time, operators[index_selected], depth - 1, 1 - turn)[
                 1]
             if c_val > max_val:
                 max_val = c_val
